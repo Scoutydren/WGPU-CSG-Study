@@ -244,35 +244,7 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
     ],
   });
 
-
-  const gBuffersDebugViewPipeline = device.createRenderPipeline({
-    layout: device.createPipelineLayout({
-      bindGroupLayouts: [
-        gBufferTexturesBindGroupLayout,
-        canvasSizeUniformBindGroupLayout,
-      ],
-    }),
-    vertex: {
-      module: device.createShaderModule({
-        code: vertexTextureQuad,
-      }),
-      entryPoint: 'main',
-    },
-    fragment: {
-      module: device.createShaderModule({
-        code: fragmentGBuffersDebugView,
-      }),
-      entryPoint: 'main',
-      targets: [
-        {
-          format: presentationFormat,
-        },
-      ],
-    },
-    primitive,
-  });
-
-  const deferredRenderPipeline = device.createRenderPipeline({
+  const rayMarchingPipeline = device.createRenderPipeline({
     layout: device.createPipelineLayout({
       bindGroupLayouts: [
         gBufferTexturesBindGroupLayout,
@@ -677,37 +649,23 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
       lightPass.end();
     }
     {
-      if (settings.mode === 'gBuffers view') {
-        // GBuffers debug view
-        // Left: position
-        // Middle: normal
-        // Right: albedo (use uv to mimic a checkerboard texture)
-        textureQuadPassDescriptor.colorAttachments[0].view = context
-          .getCurrentTexture()
-          .createView();
-        const debugViewPass = commandEncoder.beginRenderPass(
-          textureQuadPassDescriptor
-        );
-        debugViewPass.setPipeline(gBuffersDebugViewPipeline);
-        debugViewPass.setBindGroup(0, gBufferTexturesBindGroup);
-        debugViewPass.setBindGroup(1, canvasSizeUniformBindGroup);
-        debugViewPass.draw(6);
-        debugViewPass.end();
+      if (settings.mode === 'environment mapping on') {
+        // TODO
       } else {
         // Deferred rendering
         textureQuadPassDescriptor.colorAttachments[0].view = context
           .getCurrentTexture()
           .createView();
-        const deferredRenderingPass = commandEncoder.beginRenderPass(
+        const rayMarchingPass = commandEncoder.beginRenderPass(
           textureQuadPassDescriptor
         );
-        deferredRenderingPass.setPipeline(deferredRenderPipeline);
-        deferredRenderingPass.setBindGroup(0, gBufferTexturesBindGroup);
-        deferredRenderingPass.setBindGroup(1, lightsBufferBindGroup);
-        deferredRenderingPass.setBindGroup(2, canvasSizeUniformBindGroup);
-        deferredRenderingPass.setBindGroup(3, mousePositionUniformBindGroup);
-        deferredRenderingPass.draw(6);
-        deferredRenderingPass.end();
+        rayMarchingPass.setPipeline(rayMarchingPipeline);
+        rayMarchingPass.setBindGroup(0, gBufferTexturesBindGroup);
+        rayMarchingPass.setBindGroup(1, lightsBufferBindGroup);
+        rayMarchingPass.setBindGroup(2, canvasSizeUniformBindGroup);
+        rayMarchingPass.setBindGroup(3, mousePositionUniformBindGroup);
+        rayMarchingPass.draw(6);
+        rayMarchingPass.end();
       }
     }
     device.queue.submit([commandEncoder.finish()]);
