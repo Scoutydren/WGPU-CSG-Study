@@ -2,11 +2,7 @@ import { makeSample, SampleInit} from '../../components/SampleLayout';
 import { mat4, vec3, vec4 } from 'gl-matrix';
 import { mesh } from '../../meshes/stanfordDragon';
 
-import lightUpdate from './lightUpdate.wgsl';
-import vertexWriteGBuffers from './vertexWriteGBuffers.wgsl';
-import fragmentWriteGBuffers from './fragmentWriteGBuffers.wgsl';
 import vertexTextureQuad from './vertexTextureQuad.wgsl';
-import fragmentGBuffersDebugView from './fragmentGBuffersDebugView.wgsl';
 import fragmentRayMarching from './fragmentRayMarching.wgsl';
 
 const kMaxNumLights = 1024;
@@ -550,33 +546,13 @@ const rayMarching: () => JSX.Element = () =>
         contents: __SOURCE__,
       },
       {
-        name: 'vertexWriteGBuffers.wgsl',
-        contents: vertexWriteGBuffers,
-        editable: true,
-      },
-      {
-        name: 'fragmentWriteGBuffers.wgsl',
-        contents: fragmentWriteGBuffers,
-        editable: true,
-      },
-      {
         name: 'vertexTextureQuad.wgsl',
         contents: vertexTextureQuad,
         editable: true,
       },
       {
-        name: 'fragmentGBuffersDebugView.wgsl',
-        contents: fragmentGBuffersDebugView,
-        editable: true,
-      },
-      {
         name: 'fragmentRayMarching.wgsl',
         contents: fragmentRayMarching,
-        editable: true,
-      },
-      {
-        name: 'lightUpdate.wgsl',
-        contents: lightUpdate,
         editable: true,
       },
     ],
