@@ -7,7 +7,7 @@ import vertexWriteGBuffers from './vertexWriteGBuffers.wgsl';
 import fragmentWriteGBuffers from './fragmentWriteGBuffers.wgsl';
 import vertexTextureQuad from './vertexTextureQuad.wgsl';
 import fragmentGBuffersDebugView from './fragmentGBuffersDebugView.wgsl';
-import fragmentDeferredRendering from './fragmentRayMarching.wgsl';
+import fragmentRayMarching from './fragmentRayMarching.wgsl';
 
 const kMaxNumLights = 1024;
 const lightExtentMin = vec3.fromValues(-50, -30, -50);
@@ -113,66 +113,10 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
     gBufferTextureAlbedo.createView(),
   ];
 
-  const vertexBuffers: Iterable<GPUVertexBufferLayout> = [
-    {
-      arrayStride: Float32Array.BYTES_PER_ELEMENT * 8,
-      attributes: [
-        {
-          // position
-          shaderLocation: 0,
-          offset: 0,
-          format: 'float32x3',
-        },
-        {
-          // normal
-          shaderLocation: 1,
-          offset: Float32Array.BYTES_PER_ELEMENT * 3,
-          format: 'float32x3',
-        },
-        {
-          // uv
-          shaderLocation: 2,
-          offset: Float32Array.BYTES_PER_ELEMENT * 6,
-          format: 'float32x2',
-        },
-      ],
-    },
-  ];
-
   const primitive: GPUPrimitiveState = {
     topology: 'triangle-list',
     cullMode: 'back',
   };
-
-  const writeGBuffersPipeline = device.createRenderPipeline({
-    vertex: {
-      module: device.createShaderModule({
-        code: vertexWriteGBuffers,
-      }),
-      entryPoint: 'main',
-      buffers: vertexBuffers,
-    },
-    fragment: {
-      module: device.createShaderModule({
-        code: fragmentWriteGBuffers,
-      }),
-      entryPoint: 'main',
-      targets: [
-        // position
-        { format: 'rgba32float' },
-        // normal
-        { format: 'rgba32float' },
-        // albedo
-        { format: 'bgra8unorm' },
-      ],
-    },
-    depthStencil: {
-      depthWriteEnabled: true,
-      depthCompare: 'less',
-      format: 'depth24plus',
-    },
-    primitive,
-  });
 
   const gBufferTexturesBindGroupLayout = device.createBindGroupLayout({
     entries: [
@@ -244,6 +188,25 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
     ],
   });
 
+  const textureSamplerBindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: {
+          type: 'read-only-storage',
+        },
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
+        buffer: {
+          type: 'read-only-storage',
+        },
+      },
+    ],
+  });
+
   const rayMarchingPipeline = device.createRenderPipeline({
     layout: device.createPipelineLayout({
       bindGroupLayouts: [
@@ -261,7 +224,7 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
     },
     fragment: {
       module: device.createShaderModule({
-        code: fragmentDeferredRendering,
+        code: fragmentRayMarching,
       }),
       entryPoint: 'main',
       targets: [
@@ -272,50 +235,6 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
     },
     primitive,
   });
-
-  const depthTexture = device.createTexture({
-    size: presentationSize,
-    format: 'depth24plus',
-    usage: GPUTextureUsage.RENDER_ATTACHMENT,
-  });
-
-  const writeGBufferPassDescriptor: GPURenderPassDescriptor = {
-    colorAttachments: [
-      {
-        view: gBufferTextureViews[0],
-
-        clearValue: {
-          r: Number.MAX_VALUE,
-          g: Number.MAX_VALUE,
-          b: Number.MAX_VALUE,
-          a: 1.0,
-        },
-        loadOp: 'clear',
-        storeOp: 'store',
-      },
-      {
-        view: gBufferTextureViews[1],
-
-        clearValue: { r: 0.0, g: 0.0, b: 1.0, a: 1.0 },
-        loadOp: 'clear',
-        storeOp: 'store',
-      },
-      {
-        view: gBufferTextureViews[2],
-
-        clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
-        loadOp: 'clear',
-        storeOp: 'store',
-      },
-    ],
-    depthStencilAttachment: {
-      view: depthTexture.createView(),
-
-      depthClearValue: 1.0,
-      depthLoadOp: 'clear',
-      depthStoreOp: 'store',
-    },
-  };
 
   const textureQuadPassDescriptor: GPURenderPassDescriptor = {
     colorAttachments: [
@@ -370,24 +289,6 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  const sceneUniformBindGroup = device.createBindGroup({
-    layout: writeGBuffersPipeline.getBindGroupLayout(0),
-    entries: [
-      {
-        binding: 0,
-        resource: {
-          buffer: modelUniformBuffer,
-        },
-      },
-      {
-        binding: 1,
-        resource: {
-          buffer: cameraUniformBuffer,
-        },
-      },
-    ],
-  });
-
   //Canvas size uniform buffer and bind group
   const canvasSizeUniformBuffer = device.createBuffer({
     size: 4 * 2,
@@ -423,6 +324,18 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
       },
     ],
   });
+
+  // const textureSamplerBindGroup = device.createBindGroupLayout({
+  //   layout: textureSamplerBindGroupLayout,
+  //   entries:  [
+  //     {
+  //       binding: 0,
+  //       resource: {
+  //         buffer: ,
+  //       },
+  //     },
+  //   ],
+  // });
 
   const gBufferTexturesBindGroup = device.createBindGroup({
     layout: gBufferTexturesBindGroupLayout,
@@ -494,14 +407,6 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
     lightExtentData.byteLength
   );
 
-  const lightUpdateComputePipeline = device.createComputePipeline({
-    compute: {
-      module: device.createShaderModule({
-        code: lightUpdate,
-      }),
-      entryPoint: 'main',
-    },
-  });
   const lightsBufferBindGroup = device.createBindGroup({
     layout: lightsBufferBindGroupLayout,
     entries: [
@@ -519,29 +424,7 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
       },
     ],
   });
-  const lightsBufferComputeBindGroup = device.createBindGroup({
-    layout: lightUpdateComputePipeline.getBindGroupLayout(0),
-    entries: [
-      {
-        binding: 0,
-        resource: {
-          buffer: lightsBuffer,
-        },
-      },
-      {
-        binding: 1,
-        resource: {
-          buffer: shapeUniformBuffer,
-        },
-      },
-      {
-        binding: 2,
-        resource: {
-          buffer: lightExtentBuffer,
-        },
-      },
-    ],
-  });
+
   //--------------------
 
   // Scene matrices
@@ -629,26 +512,6 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
 
     const commandEncoder = device.createCommandEncoder();
     {
-      // Write position, normal, albedo etc. data to gBuffers
-      const gBufferPass = commandEncoder.beginRenderPass(
-        writeGBufferPassDescriptor
-      );
-      gBufferPass.setPipeline(writeGBuffersPipeline);
-      gBufferPass.setBindGroup(0, sceneUniformBindGroup);
-      gBufferPass.setVertexBuffer(0, vertexBuffer);
-      gBufferPass.setIndexBuffer(indexBuffer, 'uint16');
-      gBufferPass.drawIndexed(indexCount);
-      gBufferPass.end();
-    }
-    {
-      // Update lights position
-      const lightPass = commandEncoder.beginComputePass();
-      lightPass.setPipeline(lightUpdateComputePipeline);
-      lightPass.setBindGroup(0, lightsBufferComputeBindGroup);
-      lightPass.dispatch(Math.ceil(kMaxNumLights / 64));
-      lightPass.end();
-    }
-    {
       if (settings.mode === 'environment mapping on') {
         // TODO
       } else {
@@ -675,7 +538,7 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
   requestAnimationFrame(frame);
 };
 
-const DeferredRendering: () => JSX.Element = () =>
+const rayMarching: () => JSX.Element = () =>
   makeSample({
     name: 'Ray Marching',
     description: `This example shows how to do ray marching with webgpu.`,
@@ -707,8 +570,8 @@ const DeferredRendering: () => JSX.Element = () =>
         editable: true,
       },
       {
-        name: 'fragmentDeferredRendering.wgsl',
-        contents: fragmentDeferredRendering,
+        name: 'fragmentRayMarching.wgsl',
+        contents: fragmentRayMarching,
         editable: true,
       },
       {
@@ -720,4 +583,4 @@ const DeferredRendering: () => JSX.Element = () =>
     filename: __filename,
   });
 
-export default DeferredRendering;
+export default rayMarching;

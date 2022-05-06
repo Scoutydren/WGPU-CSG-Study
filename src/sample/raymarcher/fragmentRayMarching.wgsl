@@ -22,8 +22,8 @@ struct Mouse {
 };
 @group(3) @binding(0) var<uniform> mouse : Mouse;
 
-@group(4) @binding(1) var mySampler: sampler;
-@group(4) @binding(2) var myTexture: texture_cube<f32>;
+@group(4) @binding(0) var mySampler: sampler;
+@group(4) @binding(1) var myTexture: texture_cube<f32>;
 
 let SPHERE: u32 = 0u;
 let BOX: u32 = 1u;
