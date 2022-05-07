@@ -8,7 +8,7 @@ import styles from './MainLayout.module.css';
 
 import { pages } from './samples/[slug]';
 
-const title = 'WebGPU Samples';
+const title = 'WebGPU Ray Marching Engine';
 
 const MainLayout: React.FunctionComponent<AppProps> = ({
   Component,
@@ -58,7 +58,6 @@ const MainLayout: React.FunctionComponent<AppProps> = ({
           <h1>
             <Link href="/">{title}</Link>
           </h1>
-          <a href="https://github.com/austinEng/webgpu-samples">Github</a>
           <hr />
           <ul className={styles.exampleList}>
             {samplesNames.map((slug) => {
