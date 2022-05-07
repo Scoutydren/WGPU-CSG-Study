@@ -8,17 +8,17 @@
 // };
 // @group(1) @binding(0) var<storage, read> lightsBuffer: LightsBuffer;
 struct Shape {
-  shape_id: u32;
+  shape_id: u32
 }
 @group(1) @binding(1) var<uniform> shape : Shape;
 
 struct CanvasConstants {
-  size: vec2<f32>;
+  size: vec2<f32>
 };
 @group(2) @binding(0) var<uniform> canvas : CanvasConstants;
 
 struct Mouse {
-  pos: vec2<f32>;
+  pos: vec2<f32>
 };
 @group(3) @binding(0) var<uniform> mouse : Mouse;
 
@@ -51,11 +51,18 @@ fn ray_dir(fov: f32, size: vec2<f32>, pos: vec2<f32>) -> vec3<f32> {
 }
 
 fn clampVec3ToPositive(v: vec3<f32>) -> vec3<f32> {
-    var clamped_v = vec3<f32>(0.0, 0.0, 0.0);
-    clamped_v.x = max(v.x, 0.0);
-    clamped_v.y = max(v.y, 0.0);
-    clamped_v.z = max(v.z, 0.0);
-    return clamped_v; 
+  var clamped_v = vec3<f32>(0.0, 0.0, 0.0);
+  clamped_v.x = max(v.x, 0.0);
+  clamped_v.y = max(v.y, 0.0);
+  clamped_v.z = max(v.z, 0.0);
+  return clamped_v; 
+}
+
+fn clampVec2ToPositive(v: vec2<f32>) -> vec2<f32> {
+  var clamped_v = vec2<f32>(0.0, 0.0);
+  clamped_v.x = max(v.x, 0.0);
+  clamped_v.y = max(v.y, 0.0);
+  return clamped_v; 
 }
 
 fn rotationXY(angle: vec2<f32> ) -> mat3x3<f32>{
@@ -99,15 +106,19 @@ fn sdLink(p: vec3<f32>, le: f32, r1: f32, r2: f32) -> f32 {
   return length(vec2<f32>(length(q.xy)-r1,q.z)) - r2;
 }
 
-// fn sdHexPrism(p: vec3<f32>, h: vec2<f32>) -> f32 {
-//   let k: vec3<f32> = vec3<f32>(-0.8660254, 0.5, 0.57735);
-//   p = abs(p);
-//   p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
-//   var d: vec2<f32> = vec2<f32>(
-//        length(p.xy-vec2<f32>(clamp(p.x,-k.z*h.x,k.z*h.x), h.x))*sign(p.y-h.x),
-//        p.z-h.y );
-//   return min(max(d.x,d.y),0.0) + length(clampVec2ToPositive(d));
-// }
+fn sdHexPrism(p: vec3<f32>, h: vec2<f32>) -> f32 {
+  let k: vec3<f32> = vec3<f32>(-0.8660254, 0.5, 0.57735);
+  var pos_p = abs(p);
+  var pos_p_xy = vec2<f32>(pos_p.x, pos_p.y);
+  var temp = 2.0*min(dot(k.xy, pos_p.xy), 0.0)*k.xy;
+  pos_p.x = (pos_p_xy - temp).x;
+  pos_p.y = (pos_p_xy - temp).y;
+  
+  var d: vec2<f32> = vec2<f32>(
+       length(pos_p.xy-vec2<f32>(clamp(pos_p.x,-k.z*h.x,k.z*h.x), h.x))*sign(pos_p.y-h.x),
+       pos_p.z-h.y );
+  return min(max(d.x,d.y),0.0) + length(clampVec2ToPositive(d));
+}
 
 fn sdTriPrism(p: vec3<f32>, h: vec2<f32>) -> f32 {
   var q: vec3<f32> = abs(p);
@@ -176,8 +187,7 @@ fn dist_field(p: vec3<f32>) -> f32{
   } else if (shape.shape_id == LINK) {
     d1 = sdLink( p, 0.5, 0.2, 0.1 );
   } else if (shape.shape_id == HEXPRISM) {
-    // TODO: Fix this
-    d1 = sdTriPrism( p, vec2<f32>(0.5,0.5) );
+    d1 = sdHexPrism( p, vec2<f32>(0.5,0.5) );
   } else if (shape.shape_id == TRIPRISM) {
     d1 = sdTriPrism( p, vec2<f32>(0.5,0.2) );
   } else if (shape.shape_id == CONE) {

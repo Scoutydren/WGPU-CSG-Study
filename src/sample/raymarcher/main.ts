@@ -195,7 +195,7 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
       },
       {
         binding: 1,
-        visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
+        visibility: GPUShaderStage.FRAGMENT,
         buffer: {
           type: 'read-only-storage',
         },
@@ -321,17 +321,46 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
     ],
   });
 
-  // const textureSamplerBindGroup = device.createBindGroupLayout({
-  //   layout: textureSamplerBindGroupLayout,
-  //   entries:  [
-  //     {
-  //       binding: 0,
-  //       resource: {
-  //         buffer: ,
-  //       },
-  //     },
-  //   ],
-  // });
+  let cubeTexture: GPUTexture;
+  {
+    const img = document.createElement('img');
+    img.src = require('../../../assets/img/Di-3d.png');
+    await img.decode();
+    const imageBitmap = await createImageBitmap(img);
+
+    cubeTexture = device.createTexture({
+      size: [imageBitmap.width, imageBitmap.height, 1],
+      format: 'rgba8unorm',
+      usage:
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    device.queue.copyExternalImageToTexture(
+      { source: imageBitmap },
+      { texture: cubeTexture },
+      [imageBitmap.width, imageBitmap.height]
+    );
+  }
+
+  const sampler = device.createSampler({
+    magFilter: 'linear',
+    minFilter: 'linear',
+  });
+
+  const textureSamplerBindGroup = device.createBindGroup({
+    layout: textureSamplerBindGroupLayout,
+    entries:  [
+      {
+        binding: 0,
+        resource: sampler
+      },
+      {
+        binding: 1,
+        resource: cubeTexture.createView()
+      },
+    ],
+  });
 
   const gBufferTexturesBindGroup = device.createBindGroup({
     layout: gBufferTexturesBindGroupLayout,
@@ -523,6 +552,7 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
         rayMarchingPass.setBindGroup(1, lightsBufferBindGroup);
         rayMarchingPass.setBindGroup(2, canvasSizeUniformBindGroup);
         rayMarchingPass.setBindGroup(3, mousePositionUniformBindGroup);
+        //rayMarchingPass.setBindGroup(4, textureSamplerBindGroup);
         rayMarchingPass.draw(6);
         rayMarchingPass.end();
       }
