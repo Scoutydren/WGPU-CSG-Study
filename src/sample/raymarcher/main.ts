@@ -265,7 +265,7 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
 
   //Change shape here
   gui
-    .add(settings, 'shape_id', 0, 10)
+    .add(settings, 'shape_id', 0, 11)
     .step(1)
     .onChange(() => {
       device.queue.writeBuffer(
@@ -357,7 +357,7 @@ const init: SampleInit = async ({ canvasRef, gui }) => {
       },
       {
         binding: 1,
-        resource: cubeTexture.createView()
+        resource: cubeTexture.createView({dimension: "cube"})
       },
     ],
   });

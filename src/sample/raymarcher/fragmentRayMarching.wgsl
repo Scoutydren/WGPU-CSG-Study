@@ -1,12 +1,3 @@
-// struct LightData {
-//   position : vec4<f32>;
-//   color : vec3<f32>;
-//   radius : f32;
-// };
-// struct LightsBuffer {
-//   lights: array<LightData>;
-// };
-// @group(1) @binding(0) var<storage, read> lightsBuffer: LightsBuffer;
 struct Shape {
   shape_id: u32
 }
@@ -166,6 +157,35 @@ fn sdOctahedron(p: vec3<f32>, s: f32) -> f32
   return length(vec3<f32>(q.x, q.y - s + k, q.z - k)); 
 }
 
+fn sdDeathStar(p2: vec3<f32>, ra: f32, rb: f32, d: f32 ) -> f32
+{
+  // sampling independent computations (only depend on shape)
+  var a: f32 = (ra*ra - rb*rb + d*d)/(2.0*d);
+  var b: f32 = sqrt(max(ra*ra-a*a,0.0));
+	
+  // sampling dependant computations
+  var p: vec2<f32> = vec2<f32>( p2.x, length(p2.yz) );
+  if( p.x*b-p.y*a > d*max(b-p.y,0.0) ) {
+    return length(p-vec2<f32>(a,b));
+  }
+  else {
+    return max( (length(p          )-ra),
+               -(length(p-vec2<f32>(d,0.0))-rb));
+  }
+}
+
+fn sdUnion(d0: f32, d1: f32 ) -> f32 {
+    return min(d0, d1);
+}
+
+fn sdInter(d0: f32, d1: f32) -> f32 {
+    return max( d0, d1 );
+}
+
+fn sdSub(d0: f32, d1: f32) -> f32 {
+    return max(d0, -d1);
+}
+
 //get distance in the world
 fn dist_field(p: vec3<f32>) -> f32{
 //  p = sdRep( p, vec3<f32>( 4.0 ) );
@@ -196,6 +216,8 @@ fn dist_field(p: vec3<f32>) -> f32{
     d1 = sdCutHollowSphere( p, 0.6, 0.3, 0.1 );
   } else if (shape.shape_id == OCTAHEDRON) {
     d1 = sdOctahedron( p, 0.5 );
+  } else if (shape.shape_id == DEATHSTAR) {
+    d1 = sdDeathStar( p, 0.5, 0.2, 0.1 );
   }
   return d1;
   //return d + sfDisp( p * 2.5 );
